@@ -52,11 +52,11 @@ def fit_encoder(encoding_method, df):
     if isinstance(encoding_method, str):
         if encoding_method == "OneHot":
             fitted_encoder = preprocessing.OneHotEncoder(
-                handle_unknown="error", sparse=False
+                handle_unknown="error", sparse_output=False
             ).fit(df)
         elif encoding_method == "OneHot_drop_binary":
             fitted_encoder = preprocessing.OneHotEncoder(
-                drop="if_binary", handle_unknown="error", sparse=False
+                drop="if_binary", handle_unknown="error", sparse_output=False
             ).fit(df)
         elif encoding_method is None or "Identity":
             fitted_encoder = preprocessing.FunctionTransformer(

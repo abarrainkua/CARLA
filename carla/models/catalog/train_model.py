@@ -7,11 +7,13 @@ from sklearn.ensemble import RandomForestClassifier
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
-from carla.models.catalog.ANN_TF import AnnModel
-from carla.models.catalog.ANN_TF import AnnModel as ann_tf
+# from carla.models.catalog.ANN_TF import AnnModel
+# from carla.models.catalog.ANN_TF import AnnModel as ann_tf
+from carla.models.catalog.ANN_TORCH import AnnModel
 from carla.models.catalog.ANN_TORCH import AnnModel as ann_torch
-from carla.models.catalog.Linear_TF import LinearModel
-from carla.models.catalog.Linear_TF import LinearModel as linear_tf
+# from carla.models.catalog.Linear_TF import LinearModel
+# from carla.models.catalog.Linear_TF import LinearModel as linear_tf
+from carla.models.catalog.Linear_TORCH import LinearModel
 from carla.models.catalog.Linear_TORCH import LinearModel as linear_torch
 
 
@@ -61,33 +63,7 @@ def train_model(
     """
     print(f"balance on test set {y_train.mean()}, balance on test set {y_test.mean()}")
     if catalog_model.backend == "tensorflow":
-        if catalog_model.model_type == "linear":
-            model = linear_tf(
-                dim_input=x_train.shape[1],
-                num_of_classes=len(pd.unique(y_train)),
-                data_name=catalog_model.data.name,
-            )  # type: Union[linear_tf, ann_tf]
-        elif catalog_model.model_type == "ann":
-            model = ann_tf(
-                dim_input=x_train.shape[1],
-                dim_hidden_layers=hidden_size,
-                num_of_classes=len(pd.unique(y_train)),
-                data_name=catalog_model.data.name,
-            )
-        else:
-            raise ValueError(
-                f"model type not recognized for backend {catalog_model.backend}"
-            )
-        model.build_train_save_model(
-            x_train,
-            y_train,
-            x_test,
-            y_test,
-            epochs,
-            batch_size,
-            model_name=catalog_model.model_type,
-        )
-        return model.model
+        raise NotImplementedError("Tensorflow support removed")
     elif catalog_model.backend == "pytorch":
         train_dataset = DataFrameDataset(x_train, y_train)
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)

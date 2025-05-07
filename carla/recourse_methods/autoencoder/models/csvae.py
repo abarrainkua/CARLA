@@ -4,7 +4,7 @@ from typing import List
 
 import numpy as np
 import pandas as pd
-import tensorflow as tf
+# import tensorflow as tf
 import torch
 import torch.nn as nn
 from torch import optim
@@ -14,7 +14,7 @@ from carla import log
 from carla.recourse_methods.autoencoder.losses import csvae_loss
 from carla.recourse_methods.autoencoder.save_load import get_home
 
-tf.compat.v1.disable_eager_execution()
+# tf.compat.v1.disable_eager_execution()
 
 
 class CSVAE(nn.Module):

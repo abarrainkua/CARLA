@@ -33,7 +33,7 @@ class AnnModel(nn.Module):
 
         # Activation
         self.relu = nn.ReLU()
-        self.softmax = nn.Softmax()
+        # self.softmax = nn.Softmax()
 
     def forward(self, x):
         """
@@ -53,8 +53,8 @@ class AnnModel(nn.Module):
             if i < len(self.layers) - 1:
                 x = self.relu(x)
             else:
-                x = self.softmax(x)
-
+                # x = self.softmax(x)
+                x = nn.functional.softmax(x, dim=1)
         return x
 
     def predict(self, data):

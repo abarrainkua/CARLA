@@ -2,7 +2,7 @@ from typing import Any, List, Union
 
 import numpy as np
 import pandas as pd
-import tensorflow as tf
+# import tensorflow as tf
 import torch
 
 from carla.data.catalog.online_catalog import DataCatalog, OnlineCatalog
@@ -98,7 +98,7 @@ class MLModelCatalog(MLModel):
                 encoded_features = data.categorical
             else:
                 encoded_features = list(
-                    data.encoder.get_feature_names(data.categorical)
+                    data.encoder.get_feature_names_out(data.categorical)
                 )
 
             self._catalog = None
@@ -181,8 +181,8 @@ class MLModelCatalog(MLModel):
         return self._model
 
     def predict(
-        self, x: Union[np.ndarray, pd.DataFrame, torch.Tensor, tf.Tensor]
-    ) -> Union[np.ndarray, pd.DataFrame, torch.Tensor, tf.Tensor]:
+        self, x: Union[np.ndarray, pd.DataFrame, torch.Tensor]
+    ) -> Union[np.ndarray, pd.DataFrame, torch.Tensor]:
         """
         One-dimensional prediction of ml model for an output interval of [0, 1]
 
@@ -219,8 +219,8 @@ class MLModelCatalog(MLModel):
             )
 
     def predict_proba(
-        self, x: Union[np.ndarray, pd.DataFrame, torch.Tensor, tf.Tensor]
-    ) -> Union[np.ndarray, pd.DataFrame, torch.Tensor, tf.Tensor]:
+        self, x: Union[np.ndarray, pd.DataFrame, torch.Tensor]
+    ) -> Union[np.ndarray, pd.DataFrame, torch.Tensor]:
         """
         Two-dimensional probability prediction of ml model
 
@@ -237,9 +237,6 @@ class MLModelCatalog(MLModel):
             Ml model prediction with shape N x 2
         """
 
-        # order data (column-wise) before prediction
-        x = self.get_ordered_features(x)
-
         if len(x.shape) != 2:
             raise ValueError("Input shape has to be two-dimensional")
 
@@ -250,6 +247,8 @@ class MLModelCatalog(MLModel):
             self._model = self._model.to(device)
 
             if isinstance(x, pd.DataFrame):
+                # order data (column-wise) before prediction
+                x = self.get_ordered_features(x)
                 _x = x.values
             elif isinstance(x, torch.Tensor):
                 _x = x.clone()

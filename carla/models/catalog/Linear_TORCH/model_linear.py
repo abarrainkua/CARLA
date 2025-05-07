@@ -22,7 +22,7 @@ class LinearModel(nn.Module):
         # Layer
         self.output = nn.Linear(dim_input, num_of_classes)
 
-        self.softmax = nn.Softmax()
+        self.softmax = nn.Softmax(dim=-1)
 
     def forward(self, x):
         """

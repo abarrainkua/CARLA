@@ -4,7 +4,7 @@ from urllib.error import HTTPError
 from urllib.request import urlretrieve
 
 import joblib
-import tensorflow as tf
+# import tensorflow as tf
 import torch
 
 PYTORCH_EXT = "pt"
@@ -77,7 +77,8 @@ def load_online_model(
         device = "cuda" if torch.cuda.is_available() else "cpu"
         model = torch.load(full_path, map_location=device)
     elif ext == TENSORFLOW_EXT:
-        model = tf.keras.models.load_model(full_path, compile=False)
+        # model = tf.keras.models.load_model(full_path, compile=False)
+        raise NotImplementedError("Tensorflow support is removed")
     elif ext == SKLEARN_EXT:
         model = joblib.load(full_path)
     elif ext == XGBOOST_EXT:
@@ -135,7 +136,8 @@ def load_trained_model(
             device = "cuda" if torch.cuda.is_available() else "cpu"
             model = torch.load(cache_path, map_location=device)
         elif backend == "tensorflow":
-            model = tf.keras.models.load_model(cache_path, compile=False)
+            # model = tf.keras.models.load_model(cache_path, compile=False)
+            raise NotImplementedError("Tensorflow support removed")
         elif backend == "sklearn" or backend == "xgboost":
             model = joblib.load(cache_path)
         else:
