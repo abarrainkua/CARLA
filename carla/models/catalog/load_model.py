@@ -6,6 +6,7 @@ from urllib.request import urlretrieve
 import joblib
 # import tensorflow as tf
 import torch
+import torch.nn as nn
 
 PYTORCH_EXT = "pt"
 TENSORFLOW_EXT = "h5"
@@ -94,6 +95,7 @@ def load_trained_model(
     data_name: str,
     backend: str,
     models_home: Optional[str] = None,
+    dummy_model: Optional[nn.Module] = None,
 ):
     """
     Try to load a trained model from disk, else return None.
@@ -108,6 +110,8 @@ def load_trained_model(
         Specifies the used framework.
     models_home : string, optional
         The directory in which to cache data; see :func:`get_models_home`.
+    dummy_model: Pytorch Module, optional
+        Required only when loading a Pytorch model, the saved weights will be loaded to this model.
 
     Returns
     -------
@@ -134,7 +138,10 @@ def load_trained_model(
         # load the model
         if backend == "pytorch":
             device = "cuda" if torch.cuda.is_available() else "cpu"
-            model = torch.load(cache_path, map_location=device)
+            # model = torch.load(cache_path, map_location=device)
+            print(cache_path)
+            dummy_model.load_state_dict(torch.load(cache_path, weights_only=True))
+            model = dummy_model
         elif backend == "tensorflow":
             # model = tf.keras.models.load_model(cache_path, compile=False)
             raise NotImplementedError("Tensorflow support removed")
@@ -194,7 +201,7 @@ def save_model(
 
     # save the model
     if backend == "pytorch":
-        torch.save(model, cache_path)
+        torch.save(model.state_dict(), cache_path)
     elif backend == "tensorflow":
         model.save(cache_path)
     elif backend == "sklearn" or backend == "xgboost":

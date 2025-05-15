@@ -8,6 +8,7 @@ import torch
 from carla.data.catalog.online_catalog import DataCatalog, OnlineCatalog
 from carla.data.load_catalog import load
 from carla.models.api import MLModel
+from carla.models.catalog.ANN_TORCH import AnnModel as ann_torch
 
 from .load_model import load_online_model, load_trained_model, save_model
 from .train_model import train_model
@@ -346,8 +347,30 @@ class MLModelCatalog(MLModel):
         # try to load the model from disk, if that fails train the model instead.
         self._model = None
         if not force_train:
+            dummy_model = None
+            if self.backend == "pytorch":
+                
+                 # get preprocessed data
+                df_train = self.data.df_train
+                df_test = self.data.df_test
+
+                x_train = df_train[list(set(df_train.columns) - {self.data.target})]
+                y_train = df_train[self.data.target]
+                x_test = df_test[list(set(df_test.columns) - {self.data.target})]
+                y_test = df_test[self.data.target]
+
+                # order data (column-wise) before training
+                x_train = self.get_ordered_features(x_train)
+                x_test = self.get_ordered_features(x_test)
+                
+                dummy_model = ann_torch(
+                    input_layer=x_train.shape[1],
+                    hidden_layers=hidden_size,
+                    num_of_classes=len(pd.unique(y_train)),
+                )
+
             self._model = load_trained_model(
-                save_name=save_name, data_name=self.data.name, backend=self.backend
+                save_name=save_name, data_name=self.data.name, backend=self.backend, dummy_model=dummy_model
             )
 
             # sanity check to see if loaded model accuracy makes sense
