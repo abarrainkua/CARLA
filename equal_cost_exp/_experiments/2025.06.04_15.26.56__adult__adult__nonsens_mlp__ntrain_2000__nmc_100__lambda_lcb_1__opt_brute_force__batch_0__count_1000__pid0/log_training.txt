@@ -1,0 +1,3 @@
+[INFO] Training `nonsens_mlp` on 2,000 samples (%12.85of 15,567 samples)...
+	[INFO] Training accuracy: %78.95.
+	[INFO] Testing accuracy: %79.38.

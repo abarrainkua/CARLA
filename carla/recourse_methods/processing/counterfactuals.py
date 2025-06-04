@@ -9,10 +9,10 @@ from carla.models.api import MLModel
 
 def check_counterfactuals(
     mlmodel: MLModel,
-    counterfactuals: Union[List, pd.DataFrame],
+    counterfactuals: Union[List, torch.Tensor],
     factuals_index: pd.Index,
     negative_label: int = 0,
-) -> pd.DataFrame:
+) -> torch.Tensor:
     """
     Takes the generated list of counterfactuals from recourse methods and checks if these samples are able
     to flip the label from 0 to 1. Every counterfactual which still has a negative label, will be replaced with an

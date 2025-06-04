@@ -1,0 +1,243 @@
+(0.05, [7, 3, 3], [5, 5, 7], 1)
+{'setup_000': {'hyperparams': (5, [7, 5, 5], [3, 3, 7], 5),
+               'test-statistic': 0.005580605628685759,
+               'trained_cvae': VAE(
+  (encoder): Encoder(
+    (MLP): Sequential(
+      (L0): Linear(in_features=12, out_features=5, bias=True)
+      (A0): ReLU()
+      (L1): Linear(in_features=5, out_features=5, bias=True)
+      (A1): ReLU()
+    )
+    (linear_means): Linear(in_features=5, out_features=5, bias=True)
+    (linear_log_vars): Linear(in_features=5, out_features=5, bias=True)
+  )
+  (decoder): Decoder(
+    (MLP): Sequential(
+      (L0): Linear(in_features=10, out_features=3, bias=True)
+      (A0): ReLU()
+      (L1): Linear(in_features=3, out_features=3, bias=True)
+      (A1): ReLU()
+      (L2): Linear(in_features=3, out_features=7, bias=True)
+      (softmax): Softmax(dim=1)
+    )
+  )
+)},
+ 'setup_001': {'hyperparams': (0.01, [7, 5, 5], [3, 3, 7], 5),
+               'test-statistic': 0.013209174631170495,
+               'trained_cvae': VAE(
+  (encoder): Encoder(
+    (MLP): Sequential(
+      (L0): Linear(in_features=12, out_features=5, bias=True)
+      (A0): ReLU()
+      (L1): Linear(in_features=5, out_features=5, bias=True)
+      (A1): ReLU()
+    )
+    (linear_means): Linear(in_features=5, out_features=5, bias=True)
+    (linear_log_vars): Linear(in_features=5, out_features=5, bias=True)
+  )
+  (decoder): Decoder(
+    (MLP): Sequential(
+      (L0): Linear(in_features=10, out_features=3, bias=True)
+      (A0): ReLU()
+      (L1): Linear(in_features=3, out_features=3, bias=True)
+      (A1): ReLU()
+      (L2): Linear(in_features=3, out_features=7, bias=True)
+      (softmax): Softmax(dim=1)
+    )
+  )
+)},
+ 'setup_002': {'hyperparams': (5, [7, 32, 32, 32], [32, 32, 32, 7], 5),
+               'test-statistic': 0.010202401066528227,
+               'trained_cvae': VAE(
+  (encoder): Encoder(
+    (MLP): Sequential(
+      (L0): Linear(in_features=12, out_features=32, bias=True)
+      (A0): ReLU()
+      (L1): Linear(in_features=32, out_features=32, bias=True)
+      (A1): ReLU()
+      (L2): Linear(in_features=32, out_features=32, bias=True)
+      (A2): ReLU()
+    )
+    (linear_means): Linear(in_features=32, out_features=5, bias=True)
+    (linear_log_vars): Linear(in_features=32, out_features=5, bias=True)
+  )
+  (decoder): Decoder(
+    (MLP): Sequential(
+      (L0): Linear(in_features=10, out_features=32, bias=True)
+      (A0): ReLU()
+      (L1): Linear(in_features=32, out_features=32, bias=True)
+      (A1): ReLU()
+      (L2): Linear(in_features=32, out_features=32, bias=True)
+      (A2): ReLU()
+      (L3): Linear(in_features=32, out_features=7, bias=True)
+      (softmax): Softmax(dim=1)
+    )
+  )
+)},
+ 'setup_003': {'hyperparams': (0.05, [7, 3, 3], [5, 5, 7], 1),
+               'test-statistic': -0.0004389254637806872,
+               'trained_cvae': VAE(
+  (encoder): Encoder(
+    (MLP): Sequential(
+      (L0): Linear(in_features=12, out_features=3, bias=True)
+      (A0): ReLU()
+      (L1): Linear(in_features=3, out_features=3, bias=True)
+      (A1): ReLU()
+    )
+    (linear_means): Linear(in_features=3, out_features=1, bias=True)
+    (linear_log_vars): Linear(in_features=3, out_features=1, bias=True)
+  )
+  (decoder): Decoder(
+    (MLP): Sequential(
+      (L0): Linear(in_features=6, out_features=5, bias=True)
+      (A0): ReLU()
+      (L1): Linear(in_features=5, out_features=5, bias=True)
+      (A1): ReLU()
+      (L2): Linear(in_features=5, out_features=7, bias=True)
+      (softmax): Softmax(dim=1)
+    )
+  )
+)},
+ 'setup_004': {'hyperparams': (0.01, [7, 2, 2], [5, 5, 7], 1),
+               'test-statistic': 0.006220395446851962,
+               'trained_cvae': VAE(
+  (encoder): Encoder(
+    (MLP): Sequential(
+      (L0): Linear(in_features=12, out_features=2, bias=True)
+      (A0): ReLU()
+      (L1): Linear(in_features=2, out_features=2, bias=True)
+      (A1): ReLU()
+    )
+    (linear_means): Linear(in_features=2, out_features=1, bias=True)
+    (linear_log_vars): Linear(in_features=2, out_features=1, bias=True)
+  )
+  (decoder): Decoder(
+    (MLP): Sequential(
+      (L0): Linear(in_features=6, out_features=5, bias=True)
+      (A0): ReLU()
+      (L1): Linear(in_features=5, out_features=5, bias=True)
+      (A1): ReLU()
+      (L2): Linear(in_features=5, out_features=7, bias=True)
+      (softmax): Softmax(dim=1)
+    )
+  )
+)},
+ 'setup_005': {'hyperparams': (1, [7, 5, 5], [3, 3, 7], 5),
+               'test-statistic': 0.016837688618787955,
+               'trained_cvae': VAE(
+  (encoder): Encoder(
+    (MLP): Sequential(
+      (L0): Linear(in_features=12, out_features=5, bias=True)
+      (A0): ReLU()
+      (L1): Linear(in_features=5, out_features=5, bias=True)
+      (A1): ReLU()
+    )
+    (linear_means): Linear(in_features=5, out_features=5, bias=True)
+    (linear_log_vars): Linear(in_features=5, out_features=5, bias=True)
+  )
+  (decoder): Decoder(
+    (MLP): Sequential(
+      (L0): Linear(in_features=10, out_features=3, bias=True)
+      (A0): ReLU()
+      (L1): Linear(in_features=3, out_features=3, bias=True)
+      (A1): ReLU()
+      (L2): Linear(in_features=3, out_features=7, bias=True)
+      (softmax): Softmax(dim=1)
+    )
+  )
+)},
+ 'setup_006': {'hyperparams': (0.005, [7, 5, 5], [3, 3, 7], 5),
+               'test-statistic': 0.06690965683596259,
+               'trained_cvae': VAE(
+  (encoder): Encoder(
+    (MLP): Sequential(
+      (L0): Linear(in_features=12, out_features=5, bias=True)
+      (A0): ReLU()
+      (L1): Linear(in_features=5, out_features=5, bias=True)
+      (A1): ReLU()
+    )
+    (linear_means): Linear(in_features=5, out_features=5, bias=True)
+    (linear_log_vars): Linear(in_features=5, out_features=5, bias=True)
+  )
+  (decoder): Decoder(
+    (MLP): Sequential(
+      (L0): Linear(in_features=10, out_features=3, bias=True)
+      (A0): ReLU()
+      (L1): Linear(in_features=3, out_features=3, bias=True)
+      (A1): ReLU()
+      (L2): Linear(in_features=3, out_features=7, bias=True)
+      (softmax): Softmax(dim=1)
+    )
+  )
+)},
+ 'setup_007': {'hyperparams': (0.005, [7, 2, 2], [2, 7], 3),
+               'test-statistic': 0.016837688618787955,
+               'trained_cvae': VAE(
+  (encoder): Encoder(
+    (MLP): Sequential(
+      (L0): Linear(in_features=12, out_features=2, bias=True)
+      (A0): ReLU()
+      (L1): Linear(in_features=2, out_features=2, bias=True)
+      (A1): ReLU()
+    )
+    (linear_means): Linear(in_features=2, out_features=3, bias=True)
+    (linear_log_vars): Linear(in_features=2, out_features=3, bias=True)
+  )
+  (decoder): Decoder(
+    (MLP): Sequential(
+      (L0): Linear(in_features=8, out_features=2, bias=True)
+      (A0): ReLU()
+      (L1): Linear(in_features=2, out_features=7, bias=True)
+      (softmax): Softmax(dim=1)
+    )
+  )
+)},
+ 'setup_008': {'hyperparams': (1, [7, 32, 32, 32], [2, 7], 3),
+               'test-statistic': 0.007878307163566634,
+               'trained_cvae': VAE(
+  (encoder): Encoder(
+    (MLP): Sequential(
+      (L0): Linear(in_features=12, out_features=32, bias=True)
+      (A0): ReLU()
+      (L1): Linear(in_features=32, out_features=32, bias=True)
+      (A1): ReLU()
+      (L2): Linear(in_features=32, out_features=32, bias=True)
+      (A2): ReLU()
+    )
+    (linear_means): Linear(in_features=32, out_features=3, bias=True)
+    (linear_log_vars): Linear(in_features=32, out_features=3, bias=True)
+  )
+  (decoder): Decoder(
+    (MLP): Sequential(
+      (L0): Linear(in_features=8, out_features=2, bias=True)
+      (A0): ReLU()
+      (L1): Linear(in_features=2, out_features=7, bias=True)
+      (softmax): Softmax(dim=1)
+    )
+  )
+)},
+ 'setup_009': {'hyperparams': (5, [7, 5, 5], [5, 5, 7], 1),
+               'test-statistic': 0.0040782453344635206,
+               'trained_cvae': VAE(
+  (encoder): Encoder(
+    (MLP): Sequential(
+      (L0): Linear(in_features=12, out_features=5, bias=True)
+      (A0): ReLU()
+      (L1): Linear(in_features=5, out_features=5, bias=True)
+      (A1): ReLU()
+    )
+    (linear_means): Linear(in_features=5, out_features=1, bias=True)
+    (linear_log_vars): Linear(in_features=5, out_features=1, bias=True)
+  )
+  (decoder): Decoder(
+    (MLP): Sequential(
+      (L0): Linear(in_features=6, out_features=5, bias=True)
+      (A0): ReLU()
+      (L1): Linear(in_features=5, out_features=5, bias=True)
+      (A1): ReLU()
+      (L2): Linear(in_features=5, out_features=7, bias=True)
+      (softmax): Softmax(dim=1)
+    )
+  )
+)}}

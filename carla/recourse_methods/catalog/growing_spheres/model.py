@@ -1,4 +1,5 @@
 import pandas as pd
+import torch
 
 from carla.models.api import MLModel
 from carla.recourse_methods.api import RecourseMethod
@@ -78,4 +79,5 @@ class GrowingSpheres(RecourseMethod):
 
         df_cfs = check_counterfactuals(self._mlmodel, list_cfs, factuals.index)
         df_cfs = self._mlmodel.get_ordered_features(df_cfs)
+
         return df_cfs

@@ -1,0 +1,4 @@
+	scf_validity	ic_m2_true	ic_rec_type	cost_all	cost_valid	dist_to_db	runtime	default_to_MO
+m1_cvae	1.000+/-0.000	0.772+/-0.065	0.816+/-0.084	79.938+/-44.854	79.938+/-44.854	-0.709+/-0.403	0.687+/-0.010	0.000+/-0.000
+
+N = 10
