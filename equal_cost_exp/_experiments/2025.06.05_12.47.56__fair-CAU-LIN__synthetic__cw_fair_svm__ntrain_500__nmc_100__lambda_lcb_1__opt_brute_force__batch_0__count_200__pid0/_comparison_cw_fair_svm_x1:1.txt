@@ -1,0 +1,4 @@
+	scf_validity	ic_m2_true	ic_rec_type	cost_all	cost_valid	dist_to_db	runtime	default_to_MO
+m0_true	1.000+/-0.000	-1.000+/-0.000	nan+/-nan	8.185+/-0.920	8.185+/-0.920	-1.568+/-1.093	0.183+/-0.009	0.000+/-0.000
+
+N = 50

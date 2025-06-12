@@ -1,0 +1,2 @@
+	max_group_delta_dist_to_db	max_group_delta_cost_valid
+m1_cvae	0.686	51.127

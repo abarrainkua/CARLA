@@ -1,0 +1,5 @@
+[INFO] Training `cw_fair_svm` on 500 samples (%14.29of 3,500 samples)...
+	[INFO] Training accuracy: %89.40.
+	[INFO] Testing accuracy: %88.37.
+	[INFO] Hyper-parameters of best classifier selected by CV:
+	SVC(C=10.0, kernel='linear', probability=True)

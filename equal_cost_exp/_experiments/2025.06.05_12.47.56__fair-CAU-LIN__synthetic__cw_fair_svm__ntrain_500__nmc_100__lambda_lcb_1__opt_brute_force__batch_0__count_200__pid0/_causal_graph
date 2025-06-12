@@ -1,0 +1,10 @@
+digraph {
+	x3 [label=x3 shape=ellipse]
+	x2 [label=x2 shape=ellipse]
+	x1 [label=x1 shape=ellipse]
+	x4 [label=x4 shape=ellipse]
+	x1 -> x2
+	x1 -> x4
+	x2 -> x4
+	x3 -> x4
+}

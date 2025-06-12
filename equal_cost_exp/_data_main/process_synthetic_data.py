@@ -10,7 +10,7 @@ RANDOM_SEED = 54321
 seed(RANDOM_SEED) # set the random seed so that the random permutations can be reproduced again
 np.random.seed(RANDOM_SEED)
 
-from debug import ipsh
+# from debug import ipsh
 
 mu_x, sigma_x = 0, 1 # mean and standard deviation for data
 mu_w, sigma_w = 0, 0.5 # mean and standard deviation for weights
@@ -72,7 +72,7 @@ def load_synthetic_data(scm_class, variable_type = 'real'):
     uniform_rv = np.random.uniform(0,1,X.shape[0])
     y = uniform_rv < h
     # y = h > 0.5
-    y = pd.DataFrame(data=y, columns={'label'})
+    y = pd.DataFrame(data=y, columns=['label'])
 
   elif scm_class == 'fair-IMF-LIN-radial' or scm_class == 'fair-CAU-LIN-radial' or scm_class == 'fair-CAU-ANM-radial':
     print('[INFO] using a nonlinear (radial) logistic regression to generate ground truth labels')

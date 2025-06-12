@@ -1,0 +1,5 @@
+[INFO] Training `vanilla_svm` on 500 samples (%14.29of 3,500 samples)...
+	[INFO] Training accuracy: %90.80.
+	[INFO] Testing accuracy: %90.37.
+	[INFO] Hyper-parameters of best classifier selected by CV:
+	SVC(kernel='linear', probability=True)

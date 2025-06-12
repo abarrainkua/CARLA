@@ -2357,75 +2357,75 @@ def runFairRecourseExperiment(args, objs, experiment_folder_name, experimental_s
         )
       )
       
-      ##############################################################################
-  ##                                                     Individualized metrics
-  ##############################################################################
-  max_indiv_delta_cost_valids = {}
-  for recourse_type in recourse_types:
-    max_indiv_delta_cost_valids[recourse_type] = []
+#       ##############################################################################
+#   ##                                                     Individualized metrics
+#   ##############################################################################
+#   max_indiv_delta_cost_valids = {}
+#   for recourse_type in recourse_types:
+#     max_indiv_delta_cost_valids[recourse_type] = []
 
-  for idx, factual_instance_obj in enumerate(factual_instances_list_subsampled_negatively_predicted):
-    print(f'='*120)
-    print(f'[INFO] Evaluating individualized fair recourse metrics on individual {factual_instance_obj.instance_idx} (# {idx+1:03d}/{len(factual_instances_list_subsampled_negatively_predicted):03d})')
-    print(f'='*120)
-    # compute max_delta_indiv_cost for this individual, when comparing the factual against its twins
+#   for idx, factual_instance_obj in enumerate(factual_instances_list_subsampled_negatively_predicted):
+#     print(f'='*120)
+#     print(f'[INFO] Evaluating individualized fair recourse metrics on individual {factual_instance_obj.instance_idx} (# {idx+1:03d}/{len(factual_instances_list_subsampled_negatively_predicted):03d})')
+#     print(f'='*120)
+#     # compute max_delta_indiv_cost for this individual, when comparing the factual against its twins
 
-    # first compute cost_valid_factual
-    factual_instance_list = [factual_instance_obj]
-    factual_instance_dict = {elem.instance_idx : elem.dict('endogenous_and_exogenous') for elem in factual_instance_list} # TODO: deprecate this and just pass factual_instances_list into runRecourseExperiment() here and elsewhere
-    result_factual = runRecourseExperiment(args, objs, experiment_folder_name, experimental_setups, factual_instance_dict, recourse_types, f'_instance_{factual_instance_obj.instance_idx}_factuals')
+#     # first compute cost_valid_factual
+#     factual_instance_list = [factual_instance_obj]
+#     factual_instance_dict = {elem.instance_idx : elem.dict('endogenous_and_exogenous') for elem in factual_instance_list} # TODO: deprecate this and just pass factual_instances_list into runRecourseExperiment() here and elsewhere
+#     result_factual = runRecourseExperiment(args, objs, experiment_folder_name, experimental_setups, factual_instance_dict, recourse_types, f'_instance_{factual_instance_obj.instance_idx}_factuals')
 
-    # then compute cost_valid_twin for all twins
-    twin_instances_dict = {}
-    for twinning_action_set in getAllTwinningActionSets(args, objs, factual_instance_obj):
-      if args.scm_class == 'adult':
-        # we do not have the true SCM for adult, so compute the twins using the `m1_cvae`
-        twin_instance_obj = computeCounterfactualInstance(args, objs, factual_instance_obj, twinning_action_set, 'm1_cvae')
-      else:
-        twin_instance_obj = computeCounterfactualInstance(args, objs, factual_instance_obj, twinning_action_set, 'm0_true')
-      twin_instance_idx = \
-        str(factual_instance_obj.instance_idx) + '_twin_' + \
-         '_'.join([str(k) + ':' + \
-          str(int(v)) for k,v in twinning_action_set.items()])
-      # twin_instances_dict[twin_instance_idx] =  twin_instance_obj.dict()
-      twin_instances_dict[twin_instance_idx] =  twin_instance_obj.dict('endogenous_and_exogenous')
-    result_twins = runRecourseExperiment(args, objs, experiment_folder_name, experimental_setups, twin_instances_dict, recourse_types, f'_instance_{factual_instance_obj.instance_idx}_twins')
+#     # then compute cost_valid_twin for all twins
+#     twin_instances_dict = {}
+#     for twinning_action_set in getAllTwinningActionSets(args, objs, factual_instance_obj):
+#       if args.scm_class == 'adult':
+#         # we do not have the true SCM for adult, so compute the twins using the `m1_cvae`
+#         twin_instance_obj = computeCounterfactualInstance(args, objs, factual_instance_obj, twinning_action_set, 'm1_cvae')
+#       else:
+#         twin_instance_obj = computeCounterfactualInstance(args, objs, factual_instance_obj, twinning_action_set, 'm0_true')
+#       twin_instance_idx = \
+#         str(factual_instance_obj.instance_idx) + '_twin_' + \
+#          '_'.join([str(k) + ':' + \
+#           str(int(v)) for k,v in twinning_action_set.items()])
+#       # twin_instances_dict[twin_instance_idx] =  twin_instance_obj.dict()
+#       twin_instances_dict[twin_instance_idx] =  twin_instance_obj.dict('endogenous_and_exogenous')
+#     result_twins = runRecourseExperiment(args, objs, experiment_folder_name, experimental_setups, twin_instances_dict, recourse_types, f'_instance_{factual_instance_obj.instance_idx}_twins')
 
-    # finally compute max difference from the factual instance to any other instance, for each recourse_type
-    for recourse_type in recourse_types:
-      max_delta_indiv_cost = -1
-      cost_valid_factual = result_factual[f'sample_{factual_instance_obj.instance_idx}'][recourse_type]['cost_valid']
-      cost_valid_twins = [v[recourse_type]['cost_valid'] for k,v in result_twins.items() if v[recourse_type]['optimal_action_set'] != {}]
+#     # finally compute max difference from the factual instance to any other instance, for each recourse_type
+#     for recourse_type in recourse_types:
+#       max_delta_indiv_cost = -1
+#       cost_valid_factual = result_factual[f'sample_{factual_instance_obj.instance_idx}'][recourse_type]['cost_valid']
+#       cost_valid_twins = [v[recourse_type]['cost_valid'] for k,v in result_twins.items() if v[recourse_type]['optimal_action_set'] != {}]
 
-      if len(cost_valid_twins) > 0:
-        max_indiv_delta_cost_valids[recourse_type].append(
-          np.max(np.abs(np.array(cost_valid_twins) - cost_valid_factual))
-        )
-      else:
-        max_indiv_delta_cost_valids[recourse_type].append(-1) # if none of the twins have a valid cost
+#       if len(cost_valid_twins) > 0:
+#         max_indiv_delta_cost_valids[recourse_type].append(
+#           np.max(np.abs(np.array(cost_valid_twins) - cost_valid_factual))
+#         )
+#       else:
+#         max_indiv_delta_cost_valids[recourse_type].append(-1) # if none of the twins have a valid cost
 
-  metrics_summary['max_indiv_delta_cost_valid'] = []
-  metrics_summary['idx_max_indiv_delta_cost_valid'] = []
-  metrics_summary['avg_indiv_delta_cost_valid'] = []
+#   metrics_summary['max_indiv_delta_cost_valid'] = []
+#   metrics_summary['idx_max_indiv_delta_cost_valid'] = []
+#   metrics_summary['avg_indiv_delta_cost_valid'] = []
 
-  for recourse_type in recourse_types:
-    metrics_summary['max_indiv_delta_cost_valid'].append(
-      np.nanmax(
-        max_indiv_delta_cost_valids[recourse_type]
-      )
-    )
-    metrics_summary['idx_max_indiv_delta_cost_valid'].append(
-      factual_instances_list_subsampled_negatively_predicted[
-        np.nanargmax(
-          max_indiv_delta_cost_valids[recourse_type]
-        )
-      ].instance_idx
-    )
-    metrics_summary['avg_indiv_delta_cost_valid'].append(
-      np.nanmean(
-        max_indiv_delta_cost_valids[recourse_type]
-      )
-    )
+#   for recourse_type in recourse_types:
+#     metrics_summary['max_indiv_delta_cost_valid'].append(
+#       np.nanmax(
+#         max_indiv_delta_cost_valids[recourse_type]
+#       )
+#     )
+#     metrics_summary['idx_max_indiv_delta_cost_valid'].append(
+#       factual_instances_list_subsampled_negatively_predicted[
+#         np.nanargmax(
+#           max_indiv_delta_cost_valids[recourse_type]
+#         )
+#       ].instance_idx
+#     )
+#     metrics_summary['avg_indiv_delta_cost_valid'].append(
+#       np.nanmean(
+#         max_indiv_delta_cost_valids[recourse_type]
+#       )
+#     )
 
 
 
@@ -2443,32 +2443,32 @@ if __name__ == "__main__":
 
   parser = argparse.ArgumentParser()
 
-  parser.add_argument('-s', '--scm_class', type=str, default='adult', help='Name of SCM to generate data using (see loadSCM.py)')
-  parser.add_argument('-d', '--dataset_class', type=str, default='adult', help='Name of dataset to train explanation model for: german, random, mortgage, twomoon')
-  parser.add_argument('-c', '--classifier_class', type=str, default='nonsens_mlp', help='Model class that will learn data: lr, mlp')
+  parser.add_argument('-s', '--scm_class', type=str, default='fair-CAU-ANM', help='Name of SCM to generate data using (see loadSCM.py)')
+  parser.add_argument('-d', '--dataset_class', type=str, default='synthetic', help='Name of dataset to train explanation model for: german, random, mortgage, twomoon')
+  parser.add_argument('-c', '--classifier_class', type=str, default='cw_fair_svm', help='Model class that will learn data: lr, mlp')
   parser.add_argument('-e', '--experiment', type=int, default=9, help='Which experiment to run (5,8=sanity; 6=table)')
   parser.add_argument('-p', '--process_id', type=str, default='0', help='When running parallel tests on the cluster, process_id guarantees (in addition to time stamped experiment folder) that experiments do not conflict.')
 
-  parser.add_argument('--experimental_setups', nargs = '+', type=str, default=['m1_cvae'])
+  parser.add_argument('--experimental_setups', nargs = '+', type=str, default=['m0_true'])
   parser.add_argument('--norm_type', type=int, default=2)
   parser.add_argument('--lambda_lcb', type=float, default=1)
-  parser.add_argument('--num_train_samples', type=int, default=2000)
+  parser.add_argument('--num_train_samples', type=int, default=500)
   parser.add_argument('--num_validation_samples', type=int, default=250)
   parser.add_argument('--num_display_samples', type=int, default=25)
-  parser.add_argument('--num_fair_samples', type=int, default=10, help='number of negatively predicted samples selected from each of sensitive attribute groups (e.g., for `adult`: `num_train_samples` = 1500, `batch_number` = 0, `sample_count` = 1200, and `num_fair_samples` = 10).')
+  parser.add_argument('--num_fair_samples', type=int, default=50, help='number of negatively predicted samples selected from each of sensitive attribute groups (e.g., for `adult`: `num_train_samples` = 1500, `batch_number` = 0, `sample_count` = 1200, and `num_fair_samples` = 10).')
   parser.add_argument('--num_mc_samples', type=int, default=100)
   parser.add_argument('--debug_flag', type=bool, default=False)
-  parser.add_argument('--non_intervenable_nodes', nargs = '+', type=str, default=['x4'])
+  parser.add_argument('--non_intervenable_nodes', nargs = '+', type=str, default=['x1'])
   # parser.add_argument('--sensitive_attribute_nodes', nargs = '+', type=str, default=['x1', 'x2', 'x3'])
-  parser.add_argument('--sensitive_attribute_nodes', nargs = '+', type=str, default=['x2'])
-  parser.add_argument('--fair_kernel_type', type=str, default='rbf')
+  parser.add_argument('--sensitive_attribute_nodes', nargs = '+', type=str, default=['x1'])
+  parser.add_argument('--fair_kernel_type', type=str, default='linear')
   parser.add_argument('--max_intervention_cardinality', type=int, default=100)
   parser.add_argument('--optimization_approach', type=str, default='brute_force')
   parser.add_argument('--grid_search_bins', type=int, default=2)
   parser.add_argument('--grad_descent_epochs', type=int, default=1000)
   parser.add_argument('--epsilon_boundary', type=int, default=0.10, help='we only consider instances that are negatively predicted and at least epsilon_boundary prob away from decision boundary (too restrictive = smaller `batch_number` possible w/ fixed `num_train_samples`).')
   parser.add_argument('--batch_number', type=int, default=0)
-  parser.add_argument('--sample_count', type=int, default=1000, help='number of negatively predicted samples chosen in this batch (must be less, and often ~50% of `num_train_samples`')
+  parser.add_argument('--sample_count', type=int, default=200, help='number of negatively predicted samples chosen in this batch (must be less, and often ~50% of `num_train_samples`')
 
   args = parser.parse_args()
 
@@ -2613,4 +2613,30 @@ if __name__ == "__main__":
   elif args.experiment == 9: # fair recourse
     # instance_results = runRecourseExperiment(args, objs, experiment_folder_name, experimental_setups, factual_instances_dict, recourse_types)
     runFairRecourseExperiment(args, objs, experiment_folder_name, experimental_setups, factual_instances_dict, recourse_types)
+    test_data = objs['dataset_obj'].getOriginalDataFrame(num_samples = 100, with_label=True)
+    df = pd.DataFrame(test_data)
+
+    # Extract features for prediction (excluding 'y' and 'x1' if 'x1' is only sensitive attribute)
+    # Assuming all 'x' columns are features for the classifier
+    X_features = df[['x1', 'x2', 'x3', 'x4']]
+    # X_features = df[['x2', 'x3', 'x4']]
+
+    # Get predictions from the classifier
+    predictions = objs['classifier_obj'].predict(X_features)
+
+    # Add predictions to the DataFrame
+    df['predictions'] = predictions
+
+    # Convert predictions from -1/1 to 0/1 for proportion calculation
+    # Assuming 1.0 is positive prediction, -1.0 is negative prediction
+    df['positive_prediction'] = (df['predictions'] == 1.0).astype(int)
+
+    # Group by the sensitive attribute 'x1' and calculate the proportion of positive predictions
+    proportion_of_positive_predictions = df.groupby('x1')['positive_prediction'].mean()
+
+    print("Proportion of positive predictions for each sensitive group (x1):")
+    print(proportion_of_positive_predictions)
+    
+    
+    # print(objs['classifier_obj'].predict(objs['dataset_obj']))
     # print(instance_results)

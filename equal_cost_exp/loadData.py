@@ -33,10 +33,10 @@ except:
 # except:
 #   print('[ENV WARNING] process_german_data not available')
 
-# try:
-#   from _data_main.process_synthetic_data import *
-# except:
-#   print('[ENV WARNING] process_synthetic_data not available')
+try:
+  from _data_main.process_synthetic_data import *
+except:
+  print('[ENV WARNING] process_synthetic_data not available')
 
 # try:
 #   from _data_main.process_mortgage_data import *

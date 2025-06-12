@@ -255,7 +255,7 @@ class CCHVAE(RecourseMethod):
     def get_counterfactuals(self, factuals: pd.DataFrame) -> pd.DataFrame:
         factuals = self._mlmodel.get_ordered_features(factuals)
 
-        encoded_feature_names = self._mlmodel.data.encoder.get_feature_names(
+        encoded_feature_names = self._mlmodel.data.encoder.get_feature_names_out(
             self._mlmodel.data.categorical
         )
         cat_features_indices = [

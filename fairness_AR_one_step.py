@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from carla.models.catalog import  MLModelCatalog
 from carla.data.catalog import OnlineCatalog, CsvCatalog, DataCatalog
-from carla.recourse_methods import GrowingSpheres, ActionableRecourse
+from carla.recourse_methods import GrowingSpheres, ActionableRecourse, CCHVAE
 from carla import RecourseMethod
 from carla.models.negative_instances import predict_negative_instances
 from sklearn.model_selection import train_test_split
@@ -22,9 +22,9 @@ import torch.nn as nn
 import torch
 
 
-def train_social_burden(dataset='adult', file_path=None, sens_attr='race', lr=0.001, epochs=10, batch_size=256, 
-                        hidden_sizes=[128, 128], activation_name="relu", verbose=True, pretrain_epochs=2, 
-                        recourse_method="gs", weighing_strategy="individual", recourse_hyperparam={}, 
+def train_social_burden(dataset='adult', file_path=None, sens_attr='race', s_vals = None, lr=0.001, epochs=10, batch_size=256, 
+                        hidden_sizes=[128, 128], activation_name="relu", verbose=True, pretrain_epochs=2, training_metrics=False,
+                        recourse_method="GS", weighing_strategy="individual", recourse_hyperparam={}, 
                         results_file=None, random_state=42):
     
     if dataset == "adult":
@@ -64,14 +64,15 @@ def train_social_burden(dataset='adult', file_path=None, sens_attr='race', lr=0.
     
     # Map from string to recourse method
     recourse_map = {
-        "gs": GrowingSpheres,
-        "ar": ActionableRecourse
+        "GS": GrowingSpheres,
+        "AR": ActionableRecourse,
+        "CCHVAE": CCHVAE
     }
     
-    if recourse_method.lower() not in recourse_map:
+    if recourse_method.upper() not in recourse_map:
         raise ValueError(f"Unsupported recourse method: {recourse_method}. Supported: {list(recourse_map.keys())}")
     
-    recourse_model_obj = recourse_map[recourse_method.lower()]
+    recourse_model_obj = recourse_map[recourse_method.upper()]
     
     ml_model = MLModelCatalog(
         dataset_train, 
@@ -89,6 +90,26 @@ def train_social_burden(dataset='adult', file_path=None, sens_attr='race', lr=0.
         batch_size=training_params["batch_size"],
         hidden_size=training_params["hidden_size"]
     )
+    
+    if recourse_method == "CCHVAE":
+        recourse_hyperparam = {
+        "data_name": f"{dataset}_{sens_attr}",
+        "n_search_samples": 100,
+        "p_norm": 1,
+        "step": 0.1,
+        "max_iter": 1000,
+        "clamp": True,
+        "binary_cat_features": True,
+        "vae_params": {
+            # "layers": [len(ml_model.feature_input_order), 256, 128, 8],
+            "layers": [(len(continuous) + len(categorical) - len(immutable)), 256, 128, 8],
+            "train": True,
+            "lambda_reg": 1e-6,
+            "epochs": 5,
+            "lr": 1e-3,
+            "batch_size": 128,
+        },
+    }
     
     
     # Now start the iterative process to optimize wrt to social burden
@@ -115,14 +136,17 @@ def train_social_burden(dataset='adult', file_path=None, sens_attr='race', lr=0.
         
         for current_batch in batch_indices:
             
-            instance_weights = torch.ones(len(current_batch))
+            instance_weights = torch.ones(len(current_batch), requires_grad=True)
             
             # Create dataframe with current batch
             train_batch_df = dataset_train.df.iloc[current_batch]
             
             X_batch = train_batch_df.drop(columns=[y_var]).to_numpy()
             y_batch = train_batch_df[y_var].to_numpy()
-            s_batch = train_batch_df[s_var].to_numpy()
+            if sens_attr == "age":
+                s_batch = s_vals[current_batch]
+            else:
+                s_batch = train_batch_df[s_var].astype(int).to_numpy()
             
             X_batch = torch.from_numpy(X_batch).to(torch.float32)
             y_batch = torch.from_numpy(preprocessing.LabelEncoder().fit_transform(y_batch))
@@ -143,7 +167,9 @@ def train_social_burden(dataset='adult', file_path=None, sens_attr='race', lr=0.
                 factuals = train_batch_df[y_pred_bin == 0]
                 
                 # Get counterfactuals
+                print("getting counterfactuals")
                 counterfactuals = recourse_m.get_counterfactuals(factuals)
+                print("finished getting counterfactuals")
                 
                 # Create dataframe with new representations, after recourse    
                 train_batch_new = train_batch_df.copy()
@@ -160,7 +186,7 @@ def train_social_burden(dataset='adult', file_path=None, sens_attr='race', lr=0.
                 
                 # Create a DataFrame with recourse information
                 recourse_df = pd.DataFrame({
-                    "group": train_batch_df[s_var].to_numpy(),
+                    "group": s_batch.cpu().detach().numpy(),
                     "y_true": train_batch_df[y_var].to_numpy(),
                     "cost": recourse_costs,
                     "burden": np.where(train_batch_df[y_var].to_numpy() == 0, 0, recourse_costs)
@@ -171,23 +197,25 @@ def train_social_burden(dataset='adult', file_path=None, sens_attr='race', lr=0.
                 social_burden_tensor = torch.tensor(recourse_df["burden"].to_numpy(), dtype=torch.float32)
                 total_burden = social_burden_tensor.sum()
                 
-                if weighing_strategy == "individual":
-                    instance_weights = 1 + len(current_batch) * 0.2 * (social_burden_tensor / total_burden)
-                elif weighing_strategy == "group":
-                    # Total burden per group
-                    group_burden = recourse_df.groupby("group")["burden"].sum()
+                # if weighing_strategy == "individual":
+                
+                instance_weights = 1 + len(current_batch) * 0.2 * (social_burden_tensor / total_burden)
+                
+                # elif weighing_strategy == "group":
+                #     # Total burden per group
+                #     group_burden = recourse_df.groupby("group")["burden"].sum()
 
-                    # Each group's proportion of total burden
-                    burden_proportions = group_burden / group_burden.sum()
+                #     # Each group's proportion of total burden
+                #     burden_proportions = group_burden / group_burden.sum()
 
-                    # Map each instance's group to its burden proportion
-                    instance_group = recourse_df["group"]
-                    instance_group_proportion = instance_group.map(burden_proportions)
+                #     # Map each instance's group to its burden proportion
+                #     instance_group = recourse_df["group"]
+                #     instance_group_proportion = instance_group.map(burden_proportions)
 
-                    # Step 4: Compute weights (e.g., scaled by number of instances)
-                    instance_weights = torch.tensor(instance_group_proportion.to_numpy(),
-                        dtype=torch.float32
-                    )
+                #     # Step 4: Compute weights (e.g., scaled by number of instances)
+                #     instance_weights = torch.tensor(instance_group_proportion.to_numpy(),
+                #         dtype=torch.float32
+                #     )
 
                 
                 # print(instance_weights)
@@ -207,17 +235,18 @@ def train_social_burden(dataset='adult', file_path=None, sens_attr='race', lr=0.
 
             # Update ML model
             ml_model._model = learner
-            
-            print("ML model updated")
         
-        # Get performance stats for the model at this point of the training
+        # If training_metrics = True, Get performance stats for the model at this point of the training
         
         with torch.no_grad():
             # Full training data
             train_df = dataset_train.df.copy()
             X_train_full = train_df.drop(columns=[y_var]).to_numpy()
             y_train_full = train_df[y_var].to_numpy()
-            s_train_full = train_df[s_var].to_numpy()
+            if sens_attr == "age":
+                s_train_full = s_vals
+            else:
+                s_train_full = train_df[s_var].astype(int).to_numpy()
 
             # Get model predictions
             X_train_tensor = torch.from_numpy(X_train_full).to(torch.float32)
@@ -226,95 +255,98 @@ def train_social_burden(dataset='adult', file_path=None, sens_attr='race', lr=0.
             # print(f"the length of y_pred_scores is {len(y_pred_scores)}")
             y_pred_bin = (y_pred_scores > 0.5).astype(int)
 
-            # Accuracy
-            y_encoded = preprocessing.LabelEncoder().fit_transform(y_train_full)
-            train_accuracy = np.mean(y_pred_bin == y_encoded)
+        # Accuracy
+        y_encoded = preprocessing.LabelEncoder().fit_transform(y_train_full)
+        train_accuracy = np.mean(y_pred_bin == y_encoded)
 
-            # Group-wise accuracy
-            # Convert ground truth and sensitive group to numpy arrays
-            y_true = y_encoded 
-            s_groups = s_train_full
+        # Group-wise accuracy
+        # Convert ground truth and sensitive group to numpy arrays
+        y_true = y_encoded 
+        s_groups = s_train_full
 
-            # Initialize dictionaries for group-wise metrics
-            acc_by_group = {}
-            tpr_by_group = {}
-            fpr_by_group = {}
-            ar_by_group = {}
-            for group_val in np.unique(s_groups):
-                idx = s_groups == group_val
-                y_true_group = y_true[idx]
-                y_pred_group = y_pred_bin[idx]
+        # Initialize dictionaries for group-wise metrics
+        acc_by_group = {}
+        tpr_by_group = {}
+        fpr_by_group = {}
+        ar_by_group = {}
+        
+        
+        for group_val in np.unique(s_groups):
+            idx = s_groups == group_val
+            y_true_group = y_true[idx]
+            y_pred_group = y_pred_bin[idx]
 
-                acc_by_group[f"acc_group_{group_val}"] = np.mean(y_pred_group == y_true_group)
+            acc_by_group[f"acc_group_{group_val}"] = np.mean(y_pred_group == y_true_group)
 
-                # TPR: TP / (TP + FN)
-                positives = y_true_group == 1
-                tpr = np.sum((y_pred_group == 1) & positives) / (np.sum(positives) + 1e-8)
-                tpr_by_group[f"tpr_group_{group_val}"] = tpr
+            # TPR: TP / (TP + FN)
+            positives = y_true_group == 1
+            tpr = np.sum((y_pred_group == 1) & positives) / (np.sum(positives) + 1e-8)
+            tpr_by_group[f"tpr_group_{group_val}"] = tpr
 
-                # FPR: FP / (FP + TN)
-                negatives = y_true_group == 0
-                fpr = np.sum((y_pred_group == 1) & negatives) / (np.sum(negatives) + 1e-8)
-                fpr_by_group[f"fpr_group_{group_val}"] = fpr
-                
-                # AR: (FP + TP) / N_instances
-                ar = np.sum((y_pred_group == 1)) / len(y_pred_group)
-                ar_by_group[f"ar_group_{group_val}"] = ar
-
-            # Recompute counterfactuals to evaluate burden
-            factuals = train_df[y_pred_bin == 0]
-            recourse_m = recourse_model_obj(ml_model, recourse_hyperparam)
-            counterfactuals = recourse_m.get_counterfactuals(factuals)
-
-            train_new_df = train_df.copy()
-            factual_indices = factuals.index
-            train_new_df.loc[factual_indices, counterfactuals.columns] = counterfactuals.values
-
-            old_array = train_df.to_numpy()
-            new_array = train_new_df.to_numpy()
-            recourse_costs = np.linalg.norm(new_array - old_array, axis=1)
-
-            recourse_info = pd.DataFrame({
-                "group": s_train_full,
-                "y_true": y_train_full,
-                "cost": recourse_costs,
-                "burden": np.where(np.array(y_train_full) == 0, 0, recourse_costs)
-            })
+            # FPR: FP / (FP + TN)
+            negatives = y_true_group == 0
+            fpr = np.sum((y_pred_group == 1) & negatives) / (np.sum(negatives) + 1e-8)
+            fpr_by_group[f"fpr_group_{group_val}"] = fpr
             
-            cost_by_group = recourse_info.groupby("group")["cost"].mean().to_dict()
-            cost_gap = np.abs(np.diff(list(cost_by_group.values()))[0]) if len(cost_by_group) == 2 else np.nan
+            # AR: (FP + TP) / N_instances
+            ar = np.sum((y_pred_group == 1)) / len(y_pred_group)
+            ar_by_group[f"ar_group_{group_val}"] = ar
 
-            burden_by_group = recourse_info.groupby("group")["burden"].mean().to_dict()
-            burden_gap = np.abs(np.diff(list(burden_by_group.values()))[0]) if len(burden_by_group) == 2 else np.nan
+        # Recompute counterfactuals to evaluate burden
+        factuals = train_df[y_pred_bin == 0]
+        recourse_m = recourse_model_obj(ml_model, recourse_hyperparam)
+        print("getting counterfactuals")
+        counterfactuals = recourse_m.get_counterfactuals(factuals)
+        print("finished getting counterfactuals")
 
-            # Build dictionary for this epoch
-            epoch_metrics = {
-                "epoch": epoch,
-                "accuracy": train_accuracy,
-                "burden_gap": burden_gap,
-                "cost_gap": cost_gap
-            }
-            epoch_metrics.update(acc_by_group)
-            epoch_metrics.update(tpr_by_group)
-            epoch_metrics.update(fpr_by_group)
-            epoch_metrics.update(ar_by_group)
-            epoch_metrics.update({f"burden_group_{k}": v for k, v in burden_by_group.items()})
-            epoch_metrics.update({f"cost_group_{k}": v for k, v in cost_by_group.items()})
+        train_new_df = train_df.copy()
+        factual_indices = factuals.index
+        train_new_df.loc[factual_indices, counterfactuals.columns] = counterfactuals.values
+
+        old_array = train_df.to_numpy()
+        new_array = train_new_df.to_numpy()
+        recourse_costs = np.linalg.norm(new_array - old_array, axis=1)
+
+        recourse_info = pd.DataFrame({
+            "group": s_train_full,
+            "y_true": y_train_full,
+            "cost": recourse_costs,
+            "burden": np.where(np.array(y_train_full) == 0, 0, recourse_costs)
+        })
+        
+        cost_by_group = recourse_info.groupby("group")["cost"].mean().to_dict()
+        cost_gap = np.abs(np.diff(list(cost_by_group.values()))[0]) if len(cost_by_group) == 2 else np.nan
+
+        burden_by_group = recourse_info.groupby("group")["burden"].mean().to_dict()
+        burden_gap = np.abs(np.diff(list(burden_by_group.values()))[0]) if len(burden_by_group) == 2 else np.nan
+
+        # Build dictionary for this epoch
+        epoch_metrics = {
+            "epoch": epoch,
+            "accuracy": train_accuracy,
+            "burden_gap": burden_gap,
+            "cost_gap": cost_gap
+        }
+        epoch_metrics.update(acc_by_group)
+        epoch_metrics.update(tpr_by_group)
+        epoch_metrics.update(fpr_by_group)
+        epoch_metrics.update(ar_by_group)
+        epoch_metrics.update({f"burden_group_{k}": v for k, v in burden_by_group.items()})
+        epoch_metrics.update({f"cost_group_{k}": v for k, v in cost_by_group.items()})
 
 
-            # Append to log
-            metrics_log.append(epoch_metrics)
+        # Append to log
+        metrics_log.append(epoch_metrics)
 
-            print(f"Epoch {epoch} - Accuracy: {train_accuracy:.4f}, Burden Gap: {burden_gap:.4f}")
+        print(f"Epoch {epoch} - Accuracy: {train_accuracy:.4f}, Burden Gap: {burden_gap:.4f}")
         
         if verbose:
             
             print(f"epoch={epoch} loss={weighted_loss_learner}")
             
         metrics_df = pd.DataFrame(metrics_log)
-        print(metrics_df)
         
-        metrics_df.to_csv("training_metrics_log.csv", index=False)
+        metrics_df.to_csv(results_file, index=False)
         
     return learner, metrics_df, ml_model
 
@@ -639,7 +671,7 @@ def train_equal_cost(dataset='adult', file_path=None, sens_attr='race', lr=0.001
     
     
 
-def test_recourse(dataset=None, file_path=None, sens_attr='race', ml_model=None,
+def test_recourse(dataset=None, file_path=None, sens_attr='race', s_vals=None, ml_model=None,
                         recourse_method="gs", recourse_hyperparam={}, 
                         results_file=None, random_state=42):
     
@@ -684,7 +716,10 @@ def test_recourse(dataset=None, file_path=None, sens_attr='race', ml_model=None,
             test_df = dataset_test.df.copy()
             X_test_full = test_df.drop(columns=[y_var]).to_numpy()
             y_test_full = test_df[y_var].to_numpy()
-            s_test_full = test_df[s_var].to_numpy()
+            if sens_attr == "age":
+                s_test_full = s_vals
+            else:
+                s_test_full = test_df[s_var].astype(int).to_numpy()
 
             # Get model predictions
             X_test_tensor = torch.from_numpy(X_test_full).to(torch.float32)
@@ -786,47 +821,75 @@ def test_recourse(dataset=None, file_path=None, sens_attr='race', ml_model=None,
     # Convert to DataFrame
     results_df = pd.DataFrame.from_dict(results_dict, orient="index").sort_index()
     
+    results_df.to_csv(results_file, index=False)
+    
     return results_df 
     
     
 
 
+# -- Dataset parameters --
 # dataset = sys.argv[1]
 dataset = "adult"
 # sens_attr = sys.argv[2]
 sens_attr = "race" # "age", "race", "sex"
-pretrain_epoch = 20
-total_epoch = 100
-
 dataset_path =  dataset
 df_orig = pd.read_csv(f"{dataset_path}.csv")
 
+
+# -- Training parameters -- 
+pretrain_epoch = 2
+total_epoch = 5
+batch_size = 256
+learning_rate = 0.001
+hidden_sizes = [128, 128]
+activation_function = 'relu'
+
+# -- Define recourse method --
+recourse_method = 'CCHVAE'
+
+if recourse_method == 'GS':
+    recourse_hyperparam = {}
+elif recourse_method == 'AR':
+    recourse_hyperparam = {"fs_size": 5, "binary_cat_features": True, "discretize": True}
+elif recourse_method == "CCHVAE":
+    recourse_hyperparam = {} # they are defined inside the train function 
+    # TODO: Fix this 
+
+# Define random state
 random_state = 42
 
 # Get part for training and store the other part for dyamic simulation
 df_train, df_test = train_test_split(df_orig, test_size=0.95, random_state=random_state)
+# to make a smaller test set:
+df_test, _ = train_test_split(df_test, test_size=0.95, random_state=random_state)
 if sens_attr == "age":
     s_train = (df_train["age"] > 30).astype(int).to_numpy()
-    s_test = (df_test["age"] > 30).astype(int).to_numpy()         
+    s_test = (df_test["age"] > 30).astype(int).to_numpy()
+else:
+    s_train = df_train[sens_attr].to_numpy()
+    s_test = df_test[sens_attr].to_numpy()
+    
+# The strategy for fairness in recourse
+fair_strategy = "minimax_burden" # "eq_cost", "minimax_burden"    
     
 # Save train into dataframe 
 df_train.to_csv(f"{dataset_path}_train.csv", index=False)
-df_train.to_csv(f"{dataset_path}_test.csv", index=False)
+df_test.to_csv(f"{dataset_path}_test.csv", index=False)
 
 train_file_path = f"{dataset_path}_train.csv"
-train_results_file_path = "training_metrics_log.csv"
+train_results_file_path = f"results_num/{dataset_path}_{recourse_method}_{fair_strategy}_pretrain{pretrain_epoch}_total{total_epoch}_sens{sens_attr}_rs{random_state}_training_metrics_log.csv"
 
 test_file_path = f"{dataset_path}_test.csv"
-test_esults_file_path = "test_metrics_log.csv"
-
-fair_strategy = "eq_cost" # "eq_cost", "minimax_burden"
+test_results_file_path = f"results_num/{dataset_path}_{recourse_method}_{fair_strategy}_pretrain{pretrain_epoch}_total{total_epoch}_sens{sens_attr}_rs{random_state}_test_metrics_log.csv"
 
 
 if fair_strategy == "minimax_burden":
-    my_trained_model, train_metrics, ml_model = train_social_burden(dataset='adult', file_path=train_file_path, sens_attr='race', lr=0.001, epochs=total_epoch, batch_size=256, 
-                                        hidden_sizes=[128, 128], activation_name="relu", verbose=True, pretrain_epochs=pretrain_epoch, 
-                                        recourse_method="gs", weighing_strategy="individual", recourse_hyperparam={}, 
-                                        results_file=train_results_file_path, random_state=42)
+    my_trained_model, train_metrics, ml_model = train_social_burden(dataset=dataset, file_path=train_file_path, sens_attr=sens_attr, s_vals=s_train,
+                                        lr=learning_rate, epochs=total_epoch, batch_size=batch_size, 
+                                        hidden_sizes=hidden_sizes, activation_name=activation_function, verbose=True, pretrain_epochs=pretrain_epoch, 
+                                        recourse_method=recourse_method, weighing_strategy="individual", recourse_hyperparam=recourse_hyperparam, 
+                                        results_file=train_results_file_path, random_state=random_state)
     
 elif fair_strategy == "eq_cost":
     my_trained_model, train_metrics, ml_model = train_equal_cost(dataset='adult', file_path=train_file_path, sens_attr='race', lr=0.001, epochs=total_epoch, 
@@ -844,8 +907,8 @@ plt.figure(figsize=(16, 16))
 # Subplot 1: Accuracy
 plt.subplot(5, 1, 1)
 plt.plot(train_metrics["epoch"], train_metrics["accuracy"], label="Overall Accuracy", color="black", linewidth=2)
-plt.plot(train_metrics["epoch"], train_metrics["acc_group_0.0"], label="Group 0 Accuracy", linestyle="--")
-plt.plot(train_metrics["epoch"], train_metrics["acc_group_1.0"], label="Group 1 Accuracy", linestyle="--")
+plt.plot(train_metrics["epoch"], train_metrics["acc_group_0"], label="Group 0 Accuracy", linestyle="--")
+plt.plot(train_metrics["epoch"], train_metrics["acc_group_1"], label="Group 1 Accuracy", linestyle="--")
 plt.axvline(pretrain_epoch, color='gray', linestyle=':', linewidth=2, label="Pretraining End")
 plt.title("Training Accuracy")
 plt.xlabel("Epoch")
@@ -855,10 +918,10 @@ plt.grid(True)
 
 # Subplot 2: TPR and FPR per group
 plt.subplot(5, 1, 2)
-plt.plot(train_metrics["epoch"], train_metrics["tpr_group_0.0"], label="TPR Group 0", linestyle="-", color="blue")
-plt.plot(train_metrics["epoch"], train_metrics["tpr_group_1.0"], label="TPR Group 1", linestyle="-", color="cyan")
-plt.plot(train_metrics["epoch"], train_metrics["fpr_group_0.0"], label="FPR Group 0", linestyle="--", color="red")
-plt.plot(train_metrics["epoch"], train_metrics["fpr_group_1.0"], label="FPR Group 1", linestyle="--", color="orange")
+plt.plot(train_metrics["epoch"], train_metrics["tpr_group_0"], label="TPR Group 0", linestyle="-", color="blue")
+plt.plot(train_metrics["epoch"], train_metrics["tpr_group_1"], label="TPR Group 1", linestyle="-", color="cyan")
+plt.plot(train_metrics["epoch"], train_metrics["fpr_group_0"], label="FPR Group 0", linestyle="--", color="red")
+plt.plot(train_metrics["epoch"], train_metrics["fpr_group_1"], label="FPR Group 1", linestyle="--", color="orange")
 plt.axvline(pretrain_epoch, color='gray', linestyle=':', linewidth=2, label="Pretraining End")
 plt.title("TPR and FPR per Group")
 plt.xlabel("Epoch")
@@ -868,8 +931,8 @@ plt.grid(True)
 
 # Subplot 3: Social Burden
 plt.subplot(5, 1, 3)
-plt.plot(train_metrics["epoch"], train_metrics["burden_group_0.0"], label="Burden Group 0", color="green")
-plt.plot(train_metrics["epoch"], train_metrics["burden_group_1.0"], label="Burden Group 1", color="purple")
+plt.plot(train_metrics["epoch"], train_metrics["burden_group_0"], label="Burden Group 0", color="green")
+plt.plot(train_metrics["epoch"], train_metrics["burden_group_1"], label="Burden Group 1", color="purple")
 plt.axvline(pretrain_epoch, color='gray', linestyle=':', linewidth=2, label="Pretraining End")
 plt.title("Social Burden per Group")
 plt.xlabel("Epoch")
@@ -879,8 +942,8 @@ plt.grid(True)
 
 # Subplot 2: TPR and FPR per group
 plt.subplot(5, 1, 4)
-plt.plot(train_metrics["epoch"], train_metrics["ar_group_0.0"], label="AR Group 0", linestyle="-", color="blue")
-plt.plot(train_metrics["epoch"], train_metrics["ar_group_1.0"], label="AR Group 1", linestyle="-", color="cyan")
+plt.plot(train_metrics["epoch"], train_metrics["ar_group_0"], label="AR Group 0", linestyle="-", color="blue")
+plt.plot(train_metrics["epoch"], train_metrics["ar_group_1"], label="AR Group 1", linestyle="-", color="cyan")
 plt.axvline(pretrain_epoch, color='gray', linestyle=':', linewidth=2, label="Pretraining End")
 plt.title("AR per Group")
 plt.xlabel("Epoch")
@@ -890,8 +953,8 @@ plt.grid(True)
 
 # Subplot 3: Social Burden
 plt.subplot(5, 1, 5)
-plt.plot(train_metrics["epoch"], train_metrics["cost_group_0.0"], label="Cost Group 0", color="green")
-plt.plot(train_metrics["epoch"], train_metrics["cost_group_1.0"], label="Cost Group 1", color="purple")
+plt.plot(train_metrics["epoch"], train_metrics["cost_group_0"], label="Cost Group 0", color="green")
+plt.plot(train_metrics["epoch"], train_metrics["cost_group_1"], label="Cost Group 1", color="purple")
 plt.axvline(pretrain_epoch, color='gray', linestyle=':', linewidth=2, label="Pretraining End")
 plt.title("Cost per Group")
 plt.xlabel("Epoch")
@@ -901,15 +964,15 @@ plt.grid(True)
 
 plt.tight_layout()
 
-plt.savefig(f"result_figures/{fair_strategy}_pretrain{pretrain_epoch}_total{total_epoch}_training_metrics_plot.png", dpi=300, bbox_inches='tight')
+plt.savefig(f"result_figures/{fair_strategy}_{recourse_method}_pretrain{pretrain_epoch}_total{total_epoch}_sens{sens_attr}_rs{random_state}_training_metrics_plot.png", dpi=300, bbox_inches='tight')
 # plt.show()
 
 
 # Get test metrics
 
-test_metrics = test_recourse(dataset="adult", file_path=test_file_path, sens_attr='race', ml_model=ml_model,
+test_metrics = test_recourse(dataset="adult", file_path=test_file_path, sens_attr='race', s_vals=s_test, ml_model=ml_model,
                         recourse_method="gs", recourse_hyperparam={}, 
-                        results_file=None, random_state=42)
+                        results_file=test_results_file_path, random_state=42)
 
 print(test_metrics)
 
