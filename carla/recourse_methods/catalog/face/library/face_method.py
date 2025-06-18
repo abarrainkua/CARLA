@@ -128,7 +128,7 @@ def choose_random_subset(data, frac, index):
     -------
     pd.DataFrame
     """
-    number_samples = np.int(np.rint(frac * data.values.shape[0]))
+    number_samples = int(np.rint(frac * data.values.shape[0]))
     list_to_choose = (
         np.arange(0, index).tolist()
         + np.arange(index + 1, data.values.shape[0]).tolist()
