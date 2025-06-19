@@ -21,11 +21,12 @@ from sklearn.utils import resample
 import torch.nn as nn
 import torch
 import itertools
+import argparse
 
 
 def train_social_burden(dataset='adult', file_path=None, sens_attr=['race'], lr=0.001, epochs=10, batch_size=256, 
                         hidden_sizes=[128, 128], activation_name="relu", verbose=True, pretrain_epochs=2, save_training_metrics=True,
-                        n_inst_eval_train_metrics=100, recourse_method="GS", weighing_strategy="individual", recourse_hyperparam={}, 
+                        n_inst_eval_train_metrics=100, recourse_method="GS", recourse_hyperparam={}, 
                         results_file=None, random_state=42):
     
     if dataset == "adult":
@@ -761,120 +762,108 @@ def test_recourse(dataset=None, file_path=None, sens_attr='race', ml_model=None,
     
     return results_df 
 
-# def parse_args():
-#     parser = argparse.ArgumentParser()
+def parse_args():
+    parser = argparse.ArgumentParser()
 
-#     # fmt: off
+    # fmt: off
 
-#     parser.add_argument("--random-state", type=int, default=42)
-#     parser.add_argument("--dataset-name", type=str, default="adult", help="The name of the dataset")
-#     parser.add_argument("--sens-attr", default=["race", "sex"], nargs='?', help="The sensitive attribute(s)")
-#     parser.add_argument("--test-size", type=float, default=0.3, help="The proportion of points for test.")
-#     parser.add_argument("--pre-epoch", type=int, default=10, help="The number of pre-train epochs (warm-up).")
-#     parser.add_argument("--total-epoch", type=int, default=20, help="The number of total epochs.")
-#     parser.add_argument("--batch-size", type=int, default=256, help="Batch size for training the classifier")
-#     parser.add_argument("--learning-rate", type=float, default=0.001, help="Learning rate for training the classifier")
-#     parser.add_argument("--activation", type=str, default="relu", help="Activation function for the NN")
-#     parser.add_argument("--train-recourse-method", type=str, default="GS", help="The method for recourse at training.")
-#     parser.add_argument("--test-recourse-method", type=str, default="GS", help="The method for recourse at deployment.")
+    parser.add_argument("--random-state", type=int, default=42)
+    parser.add_argument("--dataset-name", type=str, default="adult", help="The name of the dataset")
+    parser.add_argument("--sens-attr", default=["race", "sex", "age"], nargs='?', help="The sensitive attribute(s)")
+    parser.add_argument("--test-size", type=float, default=0.3, help="The proportion of points for test.")
+    parser.add_argument("--pre-epoch", type=int, default=2, help="The number of pre-train epochs (warm-up).")
+    parser.add_argument("--total-epoch", type=int, default=5, help="The number of total epochs.")
+    parser.add_argument("--batch-size", type=int, default=256, help="Batch size for training the classifier")
+    parser.add_argument("--n-eval-train-metrics", type=int, default=1000, help="The number of instances in which to evaluate the training metrics.")
+    parser.add_argument("--learning-rate", type=float, default=0.001, help="Learning rate for training the classifier")
+    parser.add_argument("--activation", type=str, default="relu", help="Activation function for the NN")
+    parser.add_argument("--train-recourse-method", type=str, default="GS", help="The method for recourse at training.")
+    parser.add_argument("--test-recourse-method", type=str, default=None, help="The method for recourse at deployment.")
+    parser.add_argument("--hidden-sizes", default=[128, 128], nargs='?', help="The size(s) of the hidden layer(s).")
+    parser.add_argument("--fair_strategy", type=str, default="burden", help="The fairness strategy.")
+
+    # fmt: on
+
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    args = parse_args()
     
-#     # hau nola jarri dezaket?
-#     hidden_sizes = [128, 128]
-    
-#     # HEMENDIK BEHERA EZ DIRA NIREAK!!! 
-
-#     parser.add_argument("--eval-interactions", type=int, default=2048, help="Number of interactions to run each policy")
-#     parser.add_argument("--num-batches", type=int, default=1024, help="Number of batches to train the WMs")
-#     parser.add_argument("--batch-size", type=int, default=32, help="Batch size for WM training")
-#     parser.add_argument("--eval-batch-size", type=int, default=256, help="Batch size for evaluation data")
-#     parser.add_argument("--eval-repes", type=int, default=8, help="Number of times to evaluate each agent")
-#     parser.add_argument("--plot-every", type=int, default=10, help="Plot every X steps")
-#     parser.add_argument("--plot-traj-fraction", type=float, default=0.2, help="Fraction of the trajectories to plot")
-#     parser.add_argument("--log", default=False, action="store_true", help="Enable wandb logging")
-#     parser.add_argument("--plot", default=False, action="store_true", help="Make and save plots")
-
-#     # fmt: on
-
-#     return parser.parse_args()
-
-
-# if __name__ == "__main__":
-#     args = parse_args()
 
     
-# -- Dataset parameters --
-# dataset = sys.argv[1]
+    # Load dataset
+    df_orig = pd.read_csv(f"{args.dataset_name}.csv")
 
-dataset = "adult"
-# sens_attr = sys.argv[2]
-sens_attr = ["race", "sex"] # "age", "race", "sex"
-dataset_path =  dataset
-df_orig = pd.read_csv(f"{dataset_path}.csv")
+    # --- Training recourse method ---
 
-
-# -- Training parameters -- 
-pretrain_epoch = 2
-total_epoch = 5
-batch_size = 256
-learning_rate = 0.001
-hidden_sizes = [128, 128]
-activation_function = 'relu'
-
-# -- Define recourse method --
-recourse_method = 'WT'
-
-if recourse_method == 'GS':
-    recourse_hyperparam = {}
-elif recourse_method == 'AR':
-    recourse_hyperparam = {"fs_size": 5, "binary_cat_features": True, "discretize": True}
-elif recourse_method == "CCHVAE":
-    recourse_hyperparam = {} # they are defined inside the train function 
-    # TODO: Fix this 
-elif recourse_method == "WT":
-    recourse_hyperparam = {"loss_type": "MSE", "y_target": [1.0], "binary_cat_features": True}
-elif recourse_method == "FACE":
-    recourse_hyperparam = {"mode": "knn", "fraction": 0.1}
-
-# Number of instances in which the training metrics are evaluated    
-n_inst_eval_train_metrics=100
-
-# Define random state
-random_state = 42
-
-# Get part for training and store the other part for dyamic simulation
-df_train, df_test = train_test_split(df_orig, test_size=0.95, random_state=random_state)
-# to make a smaller test set:
-df_test, _ = train_test_split(df_test, test_size=0.95, random_state=random_state)
+    if args.train_recourse_method == 'GS':
+        recourse_hyperparam_train = {}
+    elif args.train_recourse_method == 'AR':
+        recourse_hyperparam_train = {"fs_size": 5, "binary_cat_features": True, "discretize": True}
+    elif args.train_recourse_method == "CCHVAE":
+        recourse_hyperparam_train = {} # they are defined inside the train function 
+        # TODO: Fix this 
+    elif args.train_recourse_method == "WT":
+        recourse_hyperparam_train = {"loss_type": "MSE", "y_target": [1.0], "binary_cat_features": True}
+    elif args.train_recourse_method == "FACE":
+        recourse_hyperparam_train = {"mode": "knn", "fraction": 0.1}
     
-# The strategy for fairness in recourse
-fair_strategy = "minimax_burden" # "eq_cost", "minimax_burden", "minimax cost"
     
-# Save train into dataframe 
-df_train.to_csv(f"{dataset_path}_train.csv", index=False)
-df_test.to_csv(f"{dataset_path}_test.csv", index=False)
-
-train_file_path = f"{dataset_path}_train.csv"
-train_results_file_path = f"results_num/{dataset_path}_{recourse_method}_{fair_strategy}_pretrain{pretrain_epoch}_total{total_epoch}_sens{sens_attr}_rs{random_state}_training_metrics_log.csv"
-
-test_file_path = f"{dataset_path}_test.csv"
-test_results_file_path = f"results_num/{dataset_path}_{recourse_method}_{fair_strategy}_pretrain{pretrain_epoch}_total{total_epoch}_sens{sens_attr}_rs{random_state}_test_metrics_log.csv"
-
-
-if fair_strategy == "minimax_burden":
-    my_trained_model, train_metrics, ml_model = train_social_burden(dataset=dataset, file_path=train_file_path, sens_attr=sens_attr,
-                                        lr=learning_rate, epochs=total_epoch, batch_size=batch_size, n_inst_eval_train_metrics=n_inst_eval_train_metrics,
-                                        hidden_sizes=hidden_sizes, activation_name=activation_function, verbose=True, pretrain_epochs=pretrain_epoch, 
-                                        recourse_method=recourse_method, weighing_strategy="individual", recourse_hyperparam=recourse_hyperparam, 
-                                        results_file=train_results_file_path, random_state=random_state)
+    # --- Test recourse method ---
     
-# elif fair_strategy == "eq_cost":
-#     my_trained_model, train_metrics, ml_model = train_equal_cost(dataset='adult', file_path=train_file_path, sens_attr=, lr=0.001, epochs=total_epoch, 
-#                                                                  batch_size=256, hidden_sizes=[128, 128], activation_name="relu", verbose=True, pretrain_epochs=pretrain_epoch, 
-#                                                                  recourse_method="gs", weighing_strategy="individual", recourse_hyperparam={}, 
-#                                                                  results_file=train_results_file_path, random_state=42)
+    if args.test_recourse_method is None:
+        args.test_recourse_method = args.train_recourse_method
+        recourse_hyperparam_test = recourse_hyperparam_train
+    else:
+        if args.test_recourse_method == 'GS':
+            recourse_hyperparam_test = {}
+        elif args.test_recourse_method == 'AR':
+            recourse_hyperparam_test = {"fs_size": 5, "binary_cat_features": True, "discretize": True}
+        elif args.test_recourse_method == "CCHVAE":
+            recourse_hyperparam_test = {} # they are defined inside the train function 
+            # TODO: Fix this 
+        elif args.test_recourse_method == "WT":
+            recourse_hyperparam_test = {"loss_type": "MSE", "y_target": [1.0], "binary_cat_features": True}
+        elif args.test_recourse_method == "FACE":
+            recourse_hyperparam_test = {"mode": "knn", "fraction": 0.1}
+        
 
 
-print(train_metrics)
+
+    # Get part for training and store the other part for dyamic simulation
+    df_train, df_test = train_test_split(df_orig, test_size=0.95, random_state=args.random_state)
+    # # to make a smaller test set:
+    df_test, _ = train_test_split(df_test, test_size=0.95, random_state=args.random_state)
+        
+    # Save train into dataframe 
+    df_train.to_csv(f"{args.dataset_name}_train.csv", index=False)
+    df_test.to_csv(f"{args.dataset_name}_test.csv", index=False)
+
+    train_file_path = f"{args.dataset_name}_train.csv"
+    train_results_file_path = f"results_num/{args.dataset_name}_{args.train_recourse_method}_{args.fair_strategy}_pretrain{args.pre_epoch}_total{args.total_epoch}_sens{args.sens_attr}_rs{args.random_state}_training_metrics_log.csv"
+
+    test_file_path = f"{args.dataset_name}_test.csv"
+    test_results_file_path = f"results_num/{args.dataset_name}_train{args.train_recourse_method}_test{args.test_recourse_method}_{args.fair_strategy}_pretrain{args.pre_epoch}_total{args.total_epoch}_sens{args.sens_attr}_rs{args.random_state}_test_metrics_log.csv"
+
+
+    if args.fair_strategy == "burden":
+        my_trained_model, train_metrics, ml_model = train_social_burden(dataset=args.dataset_name, file_path=train_file_path, sens_attr=args.sens_attr,
+                                            lr=args.learning_rate, epochs=args.total_epoch, batch_size=args.batch_size, n_inst_eval_train_metrics=args.n_eval_train_metrics,
+                                            hidden_sizes=args.hidden_sizes, activation_name=args.activation, verbose=True, pretrain_epochs=args.pre_epoch, 
+                                            recourse_method=args.train_recourse_method, recourse_hyperparam=recourse_hyperparam_train, 
+                                            results_file=train_results_file_path, random_state=args.random_state)
+
+
+    print(train_metrics)
+
+    # Get test metrics
+
+    test_metrics = test_recourse(dataset=args.dataset_name, file_path=test_file_path, sens_attr=args.sens_attr, ml_model=ml_model,
+                            recourse_method=args.test_recourse_method, recourse_hyperparam=recourse_hyperparam_test, 
+                            results_file=test_results_file_path, random_state=args.random_state)
+
+    print(test_metrics)
 
 # Plot the metrics
 
@@ -946,10 +935,6 @@ print(train_metrics)
 
 # Get test metrics
 
-test_metrics = test_recourse(dataset=dataset, file_path=test_file_path, sens_attr=sens_attr, ml_model=ml_model,
-                        recourse_method=recourse_method, recourse_hyperparam=recourse_hyperparam, 
-                        results_file=test_results_file_path, random_state=42)
 
-print(test_metrics)
 
 
